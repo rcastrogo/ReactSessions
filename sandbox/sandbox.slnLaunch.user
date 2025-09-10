@@ -1,0 +1,12 @@
+[
+  {
+    "Name": "Nuevo perfil",
+    "Projects": [
+      {
+        "Name": "sandbox.esproj",
+        "Action": "Start",
+        "DebugTarget": "Servidor (Node.js)"
+      }
+    ]
+  }
+]
