@@ -1,0 +1,25 @@
+{
+  "lang": "ES",
+  "language": {
+    "spanish": "Español",
+    "english": "Inglés"
+  },
+  "general": {
+    "action": {
+      "accept": "Aceptar",
+      "close": "Cerrar",
+      "cancel": "Cancelar",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "loading": "Cargando...",
+      "loading-data": "Cargando datos..."
+    },
+    "wellcome-message": "Mensaje de bienvenida!!",
+    "noResultsInTable": "No hay resultados",
+    "suggest_results_one": "{{count}} resultado",
+    "suggest_results_other": "{{count}} resultados"
+  },
+  "about": {
+    "project-placeholder": "Escriba para buscar proyectos..."
+  }
+}

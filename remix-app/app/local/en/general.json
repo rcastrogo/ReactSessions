@@ -1,0 +1,25 @@
+{
+  "lang": "EN",
+  "language": {
+    "spanish": "Spanish",
+    "english": "English"
+  },
+  "general": {
+    "action": {
+      "accept": "Accept",
+      "close": "Close",
+      "cancel": "Cancel",
+      "copy": "Copy",
+      "copied": "Copied",
+      "loading": "Loading...",
+      "loading-data": "Loading data..."
+    },
+    "wellcome-message": "Wellcome message!!",
+    "noResultsInTable": "No hay resultados",
+    "suggest_results_one": "{{count}} result",
+    "suggest_results_other": "{{count}} results"
+  },
+  "about": {
+    "project-placeholder": "Write text to find..."
+  }
+}
