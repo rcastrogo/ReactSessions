@@ -41,3 +41,16 @@ ehthumbs.db
 /.vs
 /sandbox/.vs
 /sandbox/obj/Debug
+remix-app/.vs/slnx.sqlite
+remix-app/.vs/VSWorkspaceState.json
+remix-app/.vs/remix-app/FileContentIndex/2d3e6668-3750-43b4-98c4-2bcb10456521.vsidx
+remix-app/.vs/remix-app/FileContentIndex/4c8848c2-9b3f-48ab-9674-757b5c602c43.vsidx
+remix-app/.vs/remix-app/FileContentIndex/7e0212be-4d36-42a3-a64c-31c477d83c12.vsidx
+remix-app/.vs/remix-app/FileContentIndex/64c08146-e8a3-483b-b91d-5e23f68df0e4.vsidx
+remix-app/.vs/remix-app/FileContentIndex/b8a4d258-6b96-45f8-89a7-c446fc4aaef9.vsidx
+remix-app/.vs/remix-app/config/applicationhost.config
+remix-app/.vs/remix-app/v17/.wsuo
+remix-app/.vs/remix-app/v17/DocumentLayout.backup.json
+remix-app/.vs/remix-app/v17/DocumentLayout.json
+/remix-app/.vs/remix-app/FileContentIndex
+/remix-app/app/mocks/mockDataLoader.ts
