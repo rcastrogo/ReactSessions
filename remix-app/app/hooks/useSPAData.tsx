@@ -19,32 +19,51 @@ function createFormData(intent: string){
 export function useSPAData<T extends object>(apiPath: string) {
   const fetcher = useFetcher();
   const [data, setData] = useState<T | null>(null);
+  const [currentIntent, setCurrentIntent] = useState<string | null>(null);
 
   useEffect(() => {
-    fetcher.submit(createFormData("init"), { method: "post", action: apiPath });
+    setCurrentIntent('init');
+    fetcher.submit(createFormData('init'), { method: 'post', action: apiPath });
   }, [apiPath]);
 
   useEffect(() => {
     const res = fetcher.data as {status: string, intent: string };
     if (!res || !res.intent) return;
     switch (res.intent) {
-      case "init":
-      case "refresh":
-      case "search":
-      case "create":
-      case "update":
-      case "delete":
+      case 'init':
+      case 'refresh':
+      case 'search':
+      case 'create':
+      case 'update':
+      case 'delete':
         setData(res as T);
         break;
       default:
         console.warn(`Unhandled intent: ${res.intent}`);
     }
+    setCurrentIntent(null);
   }, [fetcher.data]);
+
+  function submitIntent(
+    intent: string,
+    payload: Record<string, string | Blob | number> = {}
+  ) {
+    setCurrentIntent(intent);
+    const form = createFormData(intent);
+
+    Object.entries(payload).forEach(([k, v]) => {
+      form.append(k, String(v ?? ''));
+    });
+
+    fetcher.submit(form, { method: 'post', action: apiPath });
+  }
 
   return {
     data,
     fetcher,
-    isLoading: fetcher.state !== "idle",
+    submitIntent,
+    isLoading: fetcher.state !== 'idle',
+    currentIntent,
   };
 }
 

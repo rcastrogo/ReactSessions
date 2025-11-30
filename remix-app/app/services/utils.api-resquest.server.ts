@@ -1,4 +1,4 @@
-﻿
+
 import type { ErrorStack } from '~/models/ErrorStack';
 import { logFetchParams, type HttpMethod, type WrappedFetchResponse, wrappedFetch } from './utils.server';
 
@@ -27,6 +27,7 @@ export function createApiRequest<T>() {
   let _payload: unknown;
   let _method: HttpMethod = 'GET';
   let _transform: ((data: T) => T) | undefined;
+  let _accessToken: string;
 
   return {
     /**
@@ -124,6 +125,11 @@ export function createApiRequest<T>() {
       return this;
     },
 
+    useToken(token: string) {
+      _accessToken = token;
+      return this;
+    },
+
     /**
      * Executes the composed API request using `wrappedFetch`.
      * Automatically logs parameters and applies transformations if defined.
@@ -131,12 +137,15 @@ export function createApiRequest<T>() {
     async invoke(): Promise<WrappedFetchResponse<T> | ErrorStack> {
       if (!_target) throw new Error('Target endpoint not defined. Use .getFrom(), .postTo(), etc.');
       const { url, payload, method } = logFetchParams(`${process.env.API_BASE_URL}/${_target}`, _payload, _method);
-
+      console.log(_accessToken);
       return wrappedFetch<T>(
         () =>
           fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(_accessToken ? { Authorization: `Bearer ${_accessToken}` } : {}),
+            },
             ...(payload ? { body: JSON.stringify(payload) } : {}),
           }),
         _property,

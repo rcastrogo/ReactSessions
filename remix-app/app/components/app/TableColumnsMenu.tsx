@@ -17,7 +17,6 @@ export interface TableColumnsMenuProps<> {
 }
 
 export function TableColumnsMenu({ columns, onToggleColumn }: TableColumnsMenuProps) {
-  console.log('TableColumnsMenu -> Render');
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger>Columns</DropdownMenuSubTrigger>
@@ -26,7 +25,7 @@ export function TableColumnsMenu({ columns, onToggleColumn }: TableColumnsMenuPr
           <DropdownMenuCheckboxItem
             key={col.key}
             checked={col.visible}
-            onCheckedChange={(checked) => onToggleColumn(col.key)}
+            onCheckedChange={() => onToggleColumn(col.key)}
             onSelect={(e) => e.preventDefault()}
           >
             {col.label}

@@ -49,9 +49,9 @@ export async function action({ request }: ActionFunctionArgs): Promise<BaseActio
       return {
         intent,
         status: "ok" as const,
-        projects: projects ?? [],
-        roles: roles,
-        lineManagers: lineManagers,
+        projects: ('data' in projects) ? projects.data : projects ?? [],
+        roles: ('data' in roles) ? roles.data : roles ?? [],
+        lineManagers: ('data' in lineManagers) ? lineManagers.data : lineManagers ?? [],
       };
     }
 

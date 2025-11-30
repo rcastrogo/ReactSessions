@@ -1,7 +1,8 @@
-﻿import type { ErrorStack } from '~/models/ErrorStack';
+import type { ErrorStack } from '~/models/ErrorStack';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
+export const API_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYzNDkwNzk0LCJpYXQiOjE3NjM0ODk4OTQsImp0aSI6Ijk0ZWFmOTc3YjFmNDQ2MDdhYzU5MTc3YTcxZjJhYTk1IiwidXNlcl9pZCI6IjMwMCJ9.rZGai9UvKJQklpeErRLy89sWysTL9z9bEJHSXR-9rD4';
 /**
  * Represents a successful result returned by the `wrappedFetch` utility.
  *
@@ -86,7 +87,7 @@ export async function wrappedFetch<T>(
     // e.g., { target: {...} }. Use that if available; otherwise, use the raw JSON object.
     let data = json.data;
     if(target && target == '.') data = json;
-    if(target && data[target]) data[target];
+    if(target && data[target]) data = data[target];
 
     // Optionally process or transform the normalized data using a custom callback.
     // If no processor is provided, cast the result to the expected generic type T.

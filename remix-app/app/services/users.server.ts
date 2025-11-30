@@ -1,7 +1,8 @@
 import type { ErrorStack } from "../models/ErrorStack";
 import type { User } from "../models/User";
 import { createApiRequest } from "./utils.api-resquest.server";
-import type { WrappedFetchResponse } from "./utils.server";
+import { API_TOKEN, type WrappedFetchResponse } from "./utils.server";
+
 
 /**
  * Fetches all users from the API.
@@ -16,6 +17,7 @@ export async function fetchUsers(): Promise<WrappedFetchResponse<User[]> | Error
     .getFrom('users/')
     .useProperty('.')
     .useLog('Fetching users')
+    .useToken(API_TOKEN)
     .invoke();
 }
 
@@ -23,6 +25,7 @@ export async function fetchLineManagers(): Promise<WrappedFetchResponse<User[]> 
   return createApiRequest<User[]>()
     .getFrom('users/line-managers/')
     .useLog('Fetching line-managers')
+    .useToken(API_TOKEN)
     .invoke();
 }
 
@@ -51,5 +54,9 @@ export async function fetchLineManagers(): Promise<WrappedFetchResponse<User[]> 
  * ```
  */
 export async function fetchProjects(): Promise<WrappedFetchResponse<string[]> | ErrorStack> {
-  return createApiRequest<string[]>().getFrom('users/projects/').useLog('Projects').invoke();
+  return createApiRequest<string[]>()
+    .getFrom('users/projects/')
+    .useLog('Projects')
+    .useToken(API_TOKEN)
+    .invoke();
 }

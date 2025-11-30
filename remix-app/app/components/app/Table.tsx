@@ -10,18 +10,21 @@ import {
   TableRow as Tr,
 } from '~/components/ui/table';
 
-import { cn, getValueByPath, type NestedPaths } from '~/lib/utils';
+import { accentNumericComparer, cn, getValueByPath, type NestedPaths } from '~/lib/utils';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { storage } from '../../lib/storageUtil';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, EditIcon, LoaderCircle, PlusIcon, RefreshCcw, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, EditIcon, Funnel, PlusIcon, RefreshCcw, Search, Trash2 } from 'lucide-react';
 import useAlertManager from '../../hooks/useAlert';
 import Show from './Show';
 import { ACTIONS, TableMenu } from './TableMenu';
 import type { ColumnMenuProp } from './TableColumnsMenu';
 import React from 'react';
+import { TableColumnFilterMenu } from './TableColumnFilterMenu';
+import { DialogLayout } from './DialogLayout';
+import FilterDialog from './TableFilterDialog';
 
-interface Identifiable {
+export interface Identifiable {
   id: string | number;
 }
 
@@ -32,13 +35,16 @@ interface ActionHandlers<T> {
   onCustomAction?: (action: string, payload?: any) => void;
 }
 
-type Column<T extends Identifiable> = {
+export type Column<T extends Identifiable> = {
   key: string;
   title: string;
   className?: string;
   resolver?: keyof T | ((item: T) => React.ReactNode) | NestedPaths<T>;
   sorter?: keyof T | ((a: T, b: T) => number) | NestedPaths<T>;
-};
+  map?: (id: number) => string;
+  accessor?: keyof T | ((item: T) => string | number | boolean | null);
+  hideValueSelection?: boolean;
+}
 
 export interface ActionButtonProps {
   key: string,
@@ -46,6 +52,7 @@ export interface ActionButtonProps {
   onClick?: () => void;
   icon?: React.ReactNode;
   show?: 'menu' | 'button' | 'both';
+  enabledWhen?: (selected: Set<any>) => boolean;
 }
 
 interface TableProps<T extends Identifiable> {
@@ -114,16 +121,43 @@ export const TablaPaginada = <T extends Identifiable>({
   const [menuColumns, setMenuColumns] = useState<ColumnMenuProp[]>([])
   const [sortedColumn, setSortedColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
-  const [term, setTerm] = useState('');
+  const [dialogFilteredItems, setDialogFilteredItems] = useState<T[]>([]);
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [filters, setFilters] = useState<Record<string, {
+    text: string;
+    term: string;
+    values: string[];
+  }>>(() =>
+    columns.reduce((acc, c) => {
+      acc[c.key] = { text: "", term: "", values: [] };
+      return acc;
+    }, {} as Record<string, { text: string; term: string; values: string[] }>)
+  );
 
   const clickTimer = useRef<NodeJS.Timeout | null>(null);
   const lastSelectedIndexRef = useRef<number | null>(null);
+  const prevDataRef = useRef<T[] | null>(null);
+
+  const resetFilters = useCallback(() => {
+    setFilters(
+      columns.reduce((acc, c) => {
+        acc[c.key] = { text: "", term: "", values: [] };
+        return acc;
+      }, {} as Record<string, { text: string; term: string; values: string[] }>)
+    );
+  }, [columns]);
 
   useEffect(() => {
-    setDatos(dataSource ?? []);
-    setSelected(new Set());
-    setCurrentPage(1);
-  }, [dataSource]);
+    const prevData = prevDataRef.current;
+    const shouldReset = !prevData || prevData != dataSource;
+    if (shouldReset) {
+      setDatos(dataSource ?? []);
+      setSelected(new Set());
+      setCurrentPage(1);
+      resetFilters();
+      prevDataRef.current = dataSource;
+    }
+  }, [dataSource, resetFilters]);
 
   useEffect(() => {
     const value = storage.readValue<number>(PAGE_SIZE_STORAGE_KEY, 10);
@@ -132,7 +166,7 @@ export const TablaPaginada = <T extends Identifiable>({
     // Cofiguración de las columnas
     // ==============================================================================
     const saved = storage.readValue<ColumnMenuProp[]>(COLUMNS_CONFIG_STORAGE_KEY, [])
-    if (saved.length > 0) {
+    if (saved.length > 0 && saved.length == columns.length) {
       setMenuColumns(saved)
     } else {
       const defaults = columns.map(c => {
@@ -162,70 +196,102 @@ export const TablaPaginada = <T extends Identifiable>({
     );
   }, [columns, menuColumns]);
 
-  //const skeletonRows = useMemo(() => {
-  //  return Array.from({ length: pageSize }, () =>
-  //    Array.from({ length: visibleColumns.length })
-  //  );
-  //}, [pageSize, visibleColumns]);
+  const updateTextFilter = (columnKey: string, text: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [columnKey]: {
+        ...prev[columnKey],
+        text: text.toLocaleLowerCase(),
+        term: text,
+      }
+    }));
+  };
 
-  //const getSkeletonRows = function () {
-  //  return <>
-  //    {skeletonRows.map((row, rowIndex) => (
-  //      <tr key={`skeleton-${rowIndex}`} className="">
-  //        <td className="p-1">
-  //          <div className="h-11 rounded-sm animate-pulse bg-gray-300 dark:bg-blue-950/30">
-  //            <Input type="checkbox" className="size-4 mt-4 ml-1"/>
-  //          </div>
-  //        </td>
-  //        {row.map((_, colIndex) => (
-  //          <td
-  //            key={`skeleton-${rowIndex}-${colIndex}`}
-  //            className="px-1"
-  //          >
-  //            <div className="h-11 rounded-sm animate-pulse bg-gray-300 dark:bg-blue-950/30"></div>
-  //          </td>
-  //        ))}
-  //      </tr>
-  //    ))}
-  //  </>
-  //}
-
-  // ===============================================================================
-  // Filtrado de elementos
-  // ===============================================================================
-  //const filteredRows = useMemo(() => {
-  //  if (!term.trim()) return datos;
-  //  const lower = term.toLowerCase();
-  //  const items = datos.filter(item => {
-  //    for (const column of visibleColumns) {
-  //      const value = getValueByPath(item, column.key);
-  //      if (value && value.toString().toLowerCase().includes(lower)) {
-  //        return true;
-  //      }
-  //    }
-  //    return false;
-  //  });
-  //  const newSel = items.filter(item => selected.has(item.id)).map(item => item.id);
-  //  setSelected(new Set(newSel));
-  //  return items;
-  //}, [term, datos, visibleColumns]);
-  const filteredRows = useMemo(() => {
-    if (!term.trim()) return datos;
-    const lower = term.toLowerCase();
-    return datos.filter(item =>
-      visibleColumns.some(col => {
-        const value = getValueByPath(item, col.key);
-        return value?.toString().toLowerCase().includes(lower);
-      })
-    );
-  }, [term, datos, visibleColumns]);
-
-  useEffect(() => {
-    setSelected(prev => {
-      const valid = filteredRows.filter(item => prev.has(item.id)).map(i => i.id);
-      return new Set(valid);
+  const toggleValueFilter = (columnKey: string, value: string) => {
+    const val = value.toLowerCase();
+    const reset = val === '~~~~';
+    setFilters(prev => {
+      const current = prev[columnKey].values;
+      const exists = current.includes(val);
+      return {
+        ...prev,
+        [columnKey]: {
+          ...prev[columnKey],
+          values: exists
+            ? current.filter(v => v !== val)
+            : (reset ? [] : [...current, val]),
+          ...(reset ? { text: '', term: '' } : {})
+        }
+      };
     });
-  }, [filteredRows]);
+  };
+
+  const resolveCellValue = useCallback(
+    (column: Column<T>, item: T): string | number | boolean | null => {
+      if (column.accessor) {
+        if (typeof column.accessor === "function") {
+          return column.accessor(item);
+        }
+        return getValueByPath(item, column.accessor as string);
+      }
+      if (column.map && typeof column.map === "function") {
+        const raw = getValueByPath(item, column.key);
+        return column.map(raw);
+      }
+      return getValueByPath(item, column.key);
+    },
+    []
+  );
+
+  const hasAnyFilter = useMemo(() => {
+    return Object.values(filters).some(f => f.text?.trim() || (f.values && f.values.length > 0));
+  }, [filters]);
+
+  const filteredRows = useMemo(() => {
+    if (dialogFilteredItems.length > 0) {
+      const ids = new Set(dialogFilteredItems.map(r => r.id));
+      return datos.filter( r => ids.has(r.id) );
+    }
+    if (!hasAnyFilter) return datos;
+    return datos.filter((row: Record<string, any>) => {
+      // =========================================================
+      // Comprobar los filtros de todas las columnas
+      // =========================================================
+      return visibleColumns.every(col => {
+        const f = filters[col.key];
+        const text = f && f.text;
+        const hasValues = f && f.values && f.values.length > 0
+        // =======================================================
+        // Esta propiedad no se filtra
+        // =======================================================
+        if (!f && !text && !hasValues) return true;
+        // =======================================================
+        // Determinar con qué valor comparar
+        // =======================================================
+        const raw = resolveCellValue(col, row as T);
+        const value = raw == null ? '' : String(raw).toLowerCase();
+        // =======================================================
+        // El texto NO se ha encontrado en la propiedad
+        // =======================================================
+        if (text && !value.includes(text)) return false;
+        // =======================================================
+        // Comparar los valores seleccionados (si hay alguno)
+        // =======================================================
+        if (f.values.length > 0) {
+          const hasMatch = f.values.some(v => v.toLowerCase() === value);
+          if (!hasMatch) return false;
+        }
+        return true;
+      });
+    });
+  }, [datos, visibleColumns, filters, hasAnyFilter, dialogFilteredItems]);
+
+  //useEffect(() => {
+  //  setSelected(prev => {
+  //    const valid = filteredRows.filter(item => prev.has(item.id)).map(i => i.id);
+  //    return new Set(valid);
+  //  });
+  //}, [filteredRows]);
 
   // ===============================================================================
   // Ordenación de elementos
@@ -238,17 +304,16 @@ export const TablaPaginada = <T extends Identifiable>({
     if (typeof column.sorter === 'function') {
       sorterFunction = column.sorter;
     } else {
-      const path = column.sorter as string;
       sorterFunction = (a, b) => {
-        const valA = getValueByPath(a, path);
-        const valB = getValueByPath(b, path);
+        const valA = resolveCellValue(column, a);
+        const valB = resolveCellValue(column, b);
         // Handle null or undefined
         if (valA == null && valB == null) return 0;
         if (valA == null) return -1;
         if (valB == null) return 1;
         // If both values are strings, use localeCompare
         if (typeof valA === 'string' && typeof valB === 'string') {
-          return valA.localeCompare(valB, undefined, { sensitivity: 'base' });
+          return accentNumericComparer(valA, valB);
         }
         // Otherwise, do normal comparison (numbers, booleans, etc.)
         if (valA < valB) return -1;
@@ -279,7 +344,7 @@ export const TablaPaginada = <T extends Identifiable>({
   // ===============================================================================
   // Lógica de Paginación
   // ===============================================================================
-  const totalPages = Math.ceil(sortedRows.length / pageSize);
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const lastIndex = currentPage * pageSize;
   const firtsIndex = lastIndex - pageSize;
   const rows = sortedRows.slice(firtsIndex, lastIndex);
@@ -342,6 +407,25 @@ export const TablaPaginada = <T extends Identifiable>({
       return targets;
     });
   };
+
+  const handleShowOnlySelected = () => {
+    setDatos(prev =>
+      prev.filter(item => selected.has(item.id))
+    );
+    setCurrentPage(1);
+  };
+
+  const applyDialogFilter = (values: T[]) => {
+    if(values.length){
+      const ids = new Set(values.map(r => r.id));
+      setDatos(prev =>
+        prev.filter(item => ids.has(item.id))
+      );
+      setCurrentPage(1);
+    }
+    setDialogFilteredItems([]);
+    setShowSearchDialog(false);
+  }; 
 
   // ===============================================================================================
   // Insertar
@@ -457,8 +541,9 @@ export const TablaPaginada = <T extends Identifiable>({
   const handleMenuAction = useCallback(
     (action: string) => {
       if (action == ACTIONS.SELECT_ALL) handleSelectAll(true);
-      else if (action == ACTIONS.UNSELECT_ALL) handleSelectAll(false);
+      else if (action == ACTIONS.CLEAR_ALL) handleSelectAll(false);
       else if (action == ACTIONS.INVERT_SELECTION) handleInvertSelection();
+      else if (action == ACTIONS.CHOOSE_SELECTION) handleShowOnlySelected();
       else if (action == ACTIONS.NEW) handleInsertar();
       else if (action == ACTIONS.DELETE) handleDeleteSelected();
       else if (action == ACTIONS.EDIT) handleEditSelected();
@@ -472,15 +557,16 @@ export const TablaPaginada = <T extends Identifiable>({
       handleEditSelected,
       handleInsertar,
       handleInvertSelection,
+      handleShowOnlySelected,
       handleSelectAll,
       handleToggleColumn,
       selected,
     ]
   );
 
-  const resolveCellValue = useCallback(
+  const resolveCellContent = useCallback(
     (column: Column<T>, item: T) => {
-      if (!column.resolver) return getValueByPath(item, column.key);
+      if (!column.resolver) return resolveCellValue(column, item) || '';
       if (typeof column.resolver === 'function') return column.resolver(item);
       if (typeof column.resolver === 'string') {
         if (column.resolver.includes('.')) {
@@ -491,7 +577,34 @@ export const TablaPaginada = <T extends Identifiable>({
       return null;
     }, []);
 
-  console.log('table -> Render');
+  const toggleFilterUI = () => {
+    setShowSearchDialog(prev => !prev);
+  }
+
+  function getUniqueValues(data: T[], key: any) {
+    return [...new Set(data.map((row) => String((row as any)[key])))];
+  }
+
+  const uniqueValues: Record<string, string[]> = useMemo(
+    () => {
+      const data = columns.reduce((acc, column) => {
+        // ===============================================================================
+        // Recuperar descripciones de los códigos
+        // ===============================================================================
+        if (column.map) {
+          const ids = getUniqueValues(datos, column.key);
+          acc[column.key] = ids.map((id) => column.map!(~~id)).sort(accentNumericComparer);
+          return acc;
+        }
+        acc[column.key] = getUniqueValues(datos, column.key).sort(accentNumericComparer);
+        return acc;
+      }, {} as Record<string, string[]>);
+      return data;
+    },
+    [datos, columns]
+  );
+
+  /*  console.log('table -> Render');*/
 
   return (
     <div>
@@ -500,34 +613,42 @@ export const TablaPaginada = <T extends Identifiable>({
         <div className="flex items-center gap-1 mt-2">
           <div className="flex items-center gap-1">
             <span className="truncate">
-              {entity}: {datos.length} elementos
-              {filteredRows.length !== datos.length && ` (${filteredRows.length} filtrados/s)`}
-              {selected.size > 0 && ` (${selected.size} seleccionado/s)`} - Página{' '}
-              <span className="">{currentPage} / {totalPages}</span>
+              <Show when={datos.length == 0}>
+                {entity}: No hay registros
+              </Show>
+              <Show when={datos.length > 0}>
+                {entity}: {datos.length} elemento/s
+                {filteredRows.length !== datos.length && ` (${filteredRows.length} filtrado/s)`}
+                {selected.size > 0 && ` (${selected.size} seleccionado/s)`} - Página{' '}
+                <span className="">{currentPage} / {totalPages}</span>
+              </Show>
             </span>
           </div>
         </div>
         {/* Botones de acción y paginación */}
         <div className="flex items-center gap-1 mt-2">
           <div className="hidden md:flex items-center gap-1">
-            <div className="hidden md:flex flex-1">
-              <Input
-                type="text"
-                className="flex-1"
-                placeholder="Buscar por texto..."
-                value={term}
-                onChange={(e) => {
-                  setTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
             <Button className={cn('px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50',
-                                    {'!bg-gray-200 dark:!bg-blue-800' : waitingForRows })}
+              { '!bg-gray-200 dark:!bg-blue-800': waitingForRows })}
               variant={"outline"}
               title="Cargar"
               onClick={handleRefresh}>
               <RefreshCcw className={waitingForRows ? 'animate-spin' : ''} />
+            </Button>
+            <Button
+              variant={"outline"}
+              onClick={() => toggleFilterUI()}
+              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+            >
+              <Search />
+            </Button>
+            <Button
+              variant={"outline"}
+              onClick={() => resetFilters()}
+              disabled={!hasAnyFilter}
+              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+            >
+              <Funnel />
             </Button>
             <Button
               variant={"outline"}
@@ -563,6 +684,7 @@ export const TablaPaginada = <T extends Identifiable>({
                   key={`vis-${index}`}
                   onClick={() => action.onClick ? action.onClick() : handleMenuAction(action.key)}
                   className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                  disabled={action.enabledWhen ? !action.enabledWhen(selected) : false}
                 >
                   <Show when={!!action.icon}>{action.icon}</Show>
                   <Show when={!action.icon}>{action.label}</Show>
@@ -613,6 +735,7 @@ export const TablaPaginada = <T extends Identifiable>({
               <ChevronsRight />
             </Button>
             <TableMenu
+              itemsCount={filteredRows.length}
               selected={selected}
               onAction={handleMenuAction}
               pageSize={pageSize}
@@ -621,6 +744,18 @@ export const TablaPaginada = <T extends Identifiable>({
             />
           </div>
         </div>
+        <Show when={showSearchDialog}>
+            <FilterDialog
+              data={datos}
+              columns={visibleColumns.map(column => column)}
+              onFilterChange={(items) => {
+                if(hasAnyFilter) resetFilters();
+                setDialogFilteredItems(items);
+              }}
+              onClose={() => applyDialogFilter([]) }
+              onApply={() => applyDialogFilter(dialogFilteredItems)}
+            />
+        </Show>
       </div>
 
       {/* Tabla */}
@@ -644,26 +779,44 @@ export const TablaPaginada = <T extends Identifiable>({
               </Th>
               {visibleColumns.map(column => (
                 <Th
-                  key={column.key as string}
+                  key={column.key}
                   onClick={() => column.sorter && handleSort(column.key)}
                   className={
                     cn('min-w-[30px]',
                       'py-3 bg-gray-500 text-white dark:bg-blue-900 dark:text-gray-300',
                       column.className ?? '',
-                      { 'cursor-pointer dark:hover:bg-blue-950 hover:bg-gray-700': column.sorter }
+                      { 'cursor-pointer dark:hover:bg-blue-950 hover:bg-gray-700': datos.length && column.sorter }
                     )}
                 >
-                  {column.title}
-                  {sortedColumn === column.key && (
-                    <span className={cn('inline-block align-text-bottom')}>
-                      <Show when={sortDirection === 'asc'}>
-                        <ChevronUp className="ml-1 text-white" style={{ height: '16px', width: '16px' }} />
+                  <div className="flex items-center justify-between w-full">
+                    {column.title}
+                    <div className="inline-block ml-2">
+                      <Show when={sortedColumn === column.key && datos.length > 0}>
+                        <span className={cn('inline-block translate-y-[3px]')}>
+                          <Show when={sortDirection === 'asc'}>
+                            <ChevronUp className="ml-1 text-white" style={{ height: '20px', width: '20px' }} />
+                          </Show>
+                          <Show when={sortDirection === 'desc'}>
+                            <ChevronDown className="ml-1 text-white" style={{ height: '20px', width: '20px' }} />
+                          </Show>
+                        </span>
                       </Show>
-                      <Show when={sortDirection === 'desc'}>
-                        <ChevronDown className="ml-1 text-white" style={{ height: '16px', width: '16px' }} />
+                      <Show when={datos.length > 0}>
+                        <TableColumnFilterMenu
+                          columnLabel={column.title}
+                          key={'f' + column.key}
+                          values={uniqueValues[column.key] || []}
+                          term={filters[column.key].term}
+                          selected={filters[column.key].values}
+                          toggleValue={(value, text) => {
+                            if (value) toggleValueFilter(column.key, value);
+                            updateTextFilter(column.key, text);
+                          }}
+                          hideValues={column.hideValueSelection === true}
+                        />
                       </Show>
-                    </span>
-                  )}
+                    </div>
+                  </div>
                 </Th>
               ))}
             </Tr>
@@ -672,7 +825,7 @@ export const TablaPaginada = <T extends Identifiable>({
             <Show when={waitingForRows}>
               <SkeletonRows rows={pageSize} cols={visibleColumns.length} />
             </Show>
-            <Show when={rows && rows.length > 0}>
+            <Show when={rows && rows.length > 0 && !waitingForRows}>
               {rows.map((item, index) => (
                 <Tr
                   key={item.id}
@@ -694,7 +847,7 @@ export const TablaPaginada = <T extends Identifiable>({
                     <Td key={`${item.id}-${String(column.key)}`}
                       className={cn('', column.className ?? '')}
                     >
-                      {resolveCellValue(column, item)}
+                      {resolveCellContent(column, item)}
                     </Td>
                   ))}
                 </Tr>

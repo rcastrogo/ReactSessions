@@ -33,6 +33,8 @@ export interface DialogLayoutProps {
   open?: boolean;
   /** Controlled open handler */
   onOpenChange?: (open: boolean) => void;
+  /** Optional extra styles (e.g. height or overrides) */
+  className?: string;
 }
 
 /**
@@ -47,6 +49,7 @@ export function DialogLayout({
   footer,
   open,
   onOpenChange,
+  className,
 }: DialogLayoutProps) {
 
   const heightClasses =
@@ -55,7 +58,12 @@ export function DialogLayout({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={`${DialogSizeClasses[size]} ${heightClasses} flex flex-col p-0 gap-0 overflow-hidden`}
+        className={`
+          ${DialogSizeClasses[size]} 
+          ${heightClasses} 
+          flex flex-col p-0 gap-0 overflow-hidden
+          ${className}
+        `}
       >
         {/* Header */}
         {(title || description) && (

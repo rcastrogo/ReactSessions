@@ -1,4 +1,4 @@
-﻿import { clsx, type ClassValue } from 'clsx';
+import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
@@ -186,12 +186,24 @@ export type NestedPaths<T> = T extends object
   }[keyof T]
   : '';
 
+function accentNumericComparer(a: string, b: string){
+  return a.localeCompare(b, undefined, { sensitivity: 'accent', numeric: true });
+}
+
+const normalizeNFD = (value: string) => {
+  return value.normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase();
+}
+
 export {
   getSafeFormData,
   parseErrorString,
   resolveLocalizedKeys,
   createMap,
   setFocus,
+  accentNumericComparer,
+  normalizeNFD,
   getValueByPath,
   PREFIX_API_ERROR_500,
   PREFIX_API_ERROR_404,

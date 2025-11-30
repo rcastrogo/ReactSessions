@@ -13,15 +13,18 @@ import {
 import Show from "./Show";
 import { TableColumnsMenu, type ColumnMenuProp } from "./TableColumnsMenu";
 import { cn } from "../../lib/utils";
+import { data } from "react-router";
 
 interface MenuItem {
   key: string,
   label: string,
   onClick?: () => void,
   icon?: React.ReactNode;
+  enabledWhen?: (selected: Set<any>) => boolean;
 }
 
 interface TableMenuProps {
+  itemsCount: number;
   selected: Set<string | number>;
   onAction: (action: string) => void;
   pageSize: number;
@@ -31,10 +34,11 @@ interface TableMenuProps {
 
 export const ACTIONS = {
   SELECT_ALL: 'select-all',
-  UNSELECT_ALL: 'unselect-all',
+  CLEAR_ALL: 'clear-all',
   TOGGLE_COLUMN_PREFIX: 'toggle-column-',
   PAGE_SIZE_PREFIX: 'page-size-',
   INVERT_SELECTION: 'invert-selection',
+  CHOOSE_SELECTION: 'show_only_selection',
   NEW: 'new',
   DELETE: 'delete',
   EDIT: 'edit',
@@ -44,6 +48,7 @@ export const MENU_SEPARATOR_KEY = 'separator';
 
 
 export function TableMenu({
+  itemsCount = 0,
   selected = new Set(),
   onAction,
   pageSize = 10,
@@ -65,19 +70,24 @@ export function TableMenu({
           <DropdownMenuSeparator />
         </Show>
         <DropdownMenuGroup>
-          <Show when={selected.size === 0} >
+          <Show when={selected.size < itemsCount} >
             <DropdownMenuItem onClick={() => onAction?.(ACTIONS.SELECT_ALL)}>
-              Seleccionar Todo
+              Seleccionar todo
             </DropdownMenuItem>
           </Show>
           <Show when={selected.size > 0} >
-            <DropdownMenuItem onClick={() => onAction?.(ACTIONS.UNSELECT_ALL)}>
-              Quitar la selección
+            <DropdownMenuItem onClick={() => onAction?.(ACTIONS.CLEAR_ALL)}>
+              Limpiar selección
             </DropdownMenuItem>
           </Show>
-          <DropdownMenuItem onClick={() => onAction?.(ACTIONS.INVERT_SELECTION)}>
-            Invertir la selección
-          </DropdownMenuItem>
+          <Show when={selected.size > 0 && selected.size < itemsCount} >
+            <DropdownMenuItem onClick={() => onAction?.(ACTIONS.INVERT_SELECTION)}>
+              Invertir selección
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAction?.(ACTIONS.CHOOSE_SELECTION)}>
+              Solo seleccionados
+            </DropdownMenuItem>
+          </Show>
         </DropdownMenuGroup>
 
         <DropdownMenuSeparator />
@@ -123,6 +133,7 @@ export function TableMenu({
               <DropdownMenuItem
                 key={item.key}
                 onSelect={() => item.onClick ? item.onClick() : onAction(item.key)}
+                disabled={item.enabledWhen ? !item.enabledWhen(selected) : false}
               >
                 {item.icon} {item.label}
               </DropdownMenuItem>

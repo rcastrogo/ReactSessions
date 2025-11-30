@@ -1,7 +1,7 @@
 import { type FetcherSubmitOptions } from "react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "~/models/User";
-import { submitIntent, useSPAData } from "../hooks/useSPAData";
+import { useSPAData } from "../hooks/useSPAData";
 import type { BaseActionData, action as usersAction } from "~/api/users.server";
 import LoadingComponent, { IndeterminateProgressBar } from "../components/app/Loading";
 import useAlertManager from "../hooks/useAlert";
@@ -17,17 +17,18 @@ import { Mail, Printer, User as UserIcon } from "lucide-react";
 import { ALERT_TYPE, type AlertMessage } from "../components/app/AlertMessageComponent";
 import { t } from "i18next";
 import { MENU_SEPARATOR_KEY } from "../components/app/TableMenu";
+import type { ColumnMenuProp } from "../components/app/TableColumnsMenu";
 
 type UsersActionType = Awaited<ReturnType<typeof usersAction>>;
 
 const SUBMIT_ACTION_ROUTE = '/api/users';
-const SUBMIT_POST_OPTIONS: FetcherSubmitOptions = { method: "post", action: SUBMIT_ACTION_ROUTE };
+const SUBMIT_POST_OPTIONS: FetcherSubmitOptions = { method: 'post', action: SUBMIT_ACTION_ROUTE };
 
 export default function UsersPage() {
   const { error, success, question, loading, close, showMessage } = useAlertManager();
   const hydrated = useIsHydrated();
-  const { data, fetcher, isLoading } = useSPAData<UsersActionType>(SUBMIT_ACTION_ROUTE);
-  const [query, setQuery] = useState("");
+  const { data, fetcher, isLoading, submitIntent, currentIntent } = useSPAData<UsersActionType>(SUBMIT_ACTION_ROUTE);
+  const [query, setQuery] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [target, setTarget] = useState<User>();
   const [projects, setProjects] = useState<string[]>([]);
@@ -46,7 +47,7 @@ export default function UsersPage() {
   // ==========================================================
   useEffect(() => {
     if (!data) return;
-    if (data.intent !== "init") return;
+    if (data.intent !== 'init') return;
     if (data.message) error(data.message, 'Error de backend');
     if (data.projects) setProjects(data.projects);
     if (data.roles) setRoles(data.roles);
@@ -58,22 +59,22 @@ export default function UsersPage() {
   // ==================================================================
   useEffect(() => {
     if (!data) return;
-    if (data.intent === "init") return;
+    if (data.intent === 'init') return;
     close();
     switch (data.status) {
-      case "results":
+      case 'results':
         setUsers(data.users || []);
         break;
-      case "created":
+      case 'created':
         callbacksRef.current.created?.(data.user);
         break;
-      case "updated":
+      case 'updated':
         callbacksRef.current.updated?.(data.user);
         break;
-      case "deleted":
+      case 'deleted':
         callbacksRef.current.deleted?.();
         break;
-      case "error":
+      case 'error':
         error(data.message, 'Error de backend');
         break;
     }
@@ -82,7 +83,7 @@ export default function UsersPage() {
   function handleSearch() {
     loading(<LoadingComponent message={t('general.action.loading-data')} />);
     setUsers([]);
-    submitIntent(fetcher, SUBMIT_ACTION_ROUTE, "search", { q: query });
+    submitIntent('search', { q: query });
   }
 
   function handleCreate(callback: (target: User) => void) {
@@ -99,8 +100,8 @@ export default function UsersPage() {
 
   function handleDelete(ids: (string | number)[], callback: () => void) {
     callbacksRef.current.deleted = callback;
-    submitIntent(fetcher, SUBMIT_ACTION_ROUTE, "delete", { id: ids[0] });
-    loading(<LoadingComponent message="Borrando usuarios" />);
+    submitIntent('delete', { id: ids[0] });
+    loading(<LoadingComponent message='Borrando usuarios' />);
   }
 
   function handleCustomsActions(action: string, data: any) {
@@ -126,9 +127,9 @@ export default function UsersPage() {
     if (form) {
       const data = getSafeFormData(new FormData(form));
       if (target?.id)
-        submitIntent(fetcher, SUBMIT_ACTION_ROUTE, "update", data);
+        submitIntent('update', data);
       else
-        submitIntent(fetcher, SUBMIT_ACTION_ROUTE, "create", data);
+        submitIntent('create', data);
     }
     setTarget(undefined);
     setOpenUserDialog(false);
@@ -136,7 +137,7 @@ export default function UsersPage() {
 
   // Memoriza los mapas solo cuando cambian sus fuentes
   const rolesNameMap = useMemo(() => createMap(roles, 'id', 'name.ES'), [roles]);
-  const usersNameMap = useMemo(() => createMap(users, 'id', 'full_name'), [users]);
+  const usersNameMap = useMemo(() => createMap(lineManagers, 'id', 'full_name'), [users]);
   const nameResolver = useCallback(
     (id: number | null | undefined, target: Record<string, any>) => target[id || 0] ?? '',
     []
@@ -152,21 +153,25 @@ export default function UsersPage() {
           key: 'id',
           title: 'Id',
           sorter: 'id',
-          className: 'w-[20px]',
+          className: 'w-[40px]',
+          hideValueSelection: true,
         },
         {
           key: 'das',
           title: 'Das',
           resolver: 'das',
           sorter: 'das',
-          className: 'w-[20px]',
+          className: 'w-[60px]',
+          hideValueSelection: true,
         },
         {
           key: 'full_name',
+          accessor: (u: User) => u.full_name + '\r\n' + u.email,
           title: 'Nombre',
           resolver: (u: User) => (<><span>{u.full_name}</span><br></br><span className="italic text-muted-foreground">{u.email}</span></>),
           sorter: 'full_name',
           className: 'w-rest',
+          hideValueSelection: true,
         },
         {
           key: 'access_type',
@@ -184,16 +189,23 @@ export default function UsersPage() {
         {
           key: 'line_manager',
           title: 'Mentor',
-          resolver: (u: User) => nameResolver(u.line_manager, usersNameMap),
-          sorter: (a: User, b: User) => String(nameResolver(a.line_manager, usersNameMap)).localeCompare(String(nameResolver(b.line_manager, usersNameMap))),
+          sorter: (a: User, b: User) => String(nameResolver(a.line_manager, usersNameMap)).localeCompare(String(nameResolver(b.line_manager, usersNameMap)), undefined, { sensitivity: 'accent', numeric: true }),
           className: 'w-1/4',
+          map: (id: number) => nameResolver(id, usersNameMap)
         },
         {
           key: 'aspiring_role',
           title: 'Role',
-          resolver: (u: User) => nameResolver(u.aspiring_role, rolesNameMap),
-          sorter: (a: User, b: User) => String(nameResolver(a.aspiring_role, rolesNameMap)).localeCompare(String(nameResolver(b.aspiring_role, rolesNameMap))),
+          map: (id: number) => nameResolver(id, rolesNameMap),
+          sorter: (a: User, b: User) => String(nameResolver(a.aspiring_role, rolesNameMap)).localeCompare(String(nameResolver(b.aspiring_role, rolesNameMap)), undefined, { sensitivity: 'accent', numeric: true }),
           className: 'min-w-[200px] text-gray-500 [&[data-slot="table-head"]]:!text-white dark:[&[data-slot="table-head"]]:!text-white',
+        },
+        {
+          key: 'dedication',
+          title: 'Dedication (%)',
+          resolver: 'dedication',
+          className: 'text-center',
+          sorter: 'dedication',
         },
       ],
     handlers: {
@@ -208,31 +220,34 @@ export default function UsersPage() {
         key: 'send-email',
         onClick: () => success('Enviar Correo'),
         icon: <Mail />,
-        show: "both"
+        show: 'both',
+        enabledWhen: (selected) => selected.size > 0,
       },
       {
         label: 'Imprimir informe',
         key: 'print',
         onClick: () => success('Imprimir'),
         icon: <Printer />,
-        show: "menu"
+        show: 'menu'
       },
       {
         label: 'Ver perfil del usuario',
         key: 'view-profile',
         onClick: () => success('Perfil de usuario'),
         icon: <UserIcon />,
-        show: "button"
+        show: 'both',
+        enabledWhen: (selected) => selected.size == 1,
       },
       {
         label: '',
         key: MENU_SEPARATOR_KEY,
-        show: "menu"
+        show: 'menu'
       },
       {
         label: 'Exportar',
         key: 'menu-export',
-        show: "menu"
+        show: 'menu',
+        enabledWhen: (selected) => selected.size >= 1,
       }
     ] as ActionButtonProps[]
   }
@@ -268,7 +283,7 @@ export default function UsersPage() {
         columns={table_config.columns}
         actionHandlers={table_config.handlers}
         buttons={table_config.menuButtons}
-        waitingForRows={isLoading && data?.intent == 'search'}
+        waitingForRows={isLoading && currentIntent != 'delete'}
       />
 
       <DialogLayout
