@@ -106,8 +106,8 @@
             }
         },
         "games": {
-            "title": "Glypy & Xalatax",
-            "body": "Hace más de 15 años desarrollé dos pequeños videojuegos utilizando C# y Microsoft XNA, una tecnología que permitió a muchos desarrolladores crear experiencias 2D y 3D para Windows y Windows Phone. Estos proyectos fueron mis primeros experimentos reales en diseño de juegos, programación gráfica y control del rendimiento en dispositivos móviles.\n\nEl primero, **Glypy**, es un juego de plataformas clásico en el que el jugador avanza superando obstáculos, saltos y enemigos, con un estilo simple pero muy divertido. El segundo, **Xalatax**, es un arcade tipo “mata marcianos” con acción rápida, disparos constantes y un espíritu muy inspirado en los clásicos shoot ’em up. Ambos proyectos representan una etapa muy especial de experimentación y aprendizaje que marcó mi camino como desarrollador."
+            "title": "Glypy y Xalatax",
+            "body": "Hace más de 15 años ya que desarrollé dos pequeños videojuegos utilizando C# y Microsoft XNA, una tecnología que permitió a muchos desarrolladores crear experiencias 2D y 3D para Windows y Windows Phone. Estos proyectos fueron mis primeros experimentos reales en diseño de juegos, programación gráfica y control del rendimiento en dispositivos móviles.\n\nEl primero, \"Glypy\", es un juego de plataformas clásico en el que el jugador avanza superando obstáculos, saltos y enemigos, con un estilo simple pero muy divertido. \n\nEl segundo, **Xalatax**, es un arcade tipo “mata marcianos” con acción rápida, disparos constantes y un espíritu muy inspirado en los clásicos shoot ’em up. \n\nAmbos proyectos representan una etapa muy especial de experimentación y aprendizaje que marcó mi camino como desarrollador."
         }
     },
     "contact": {
