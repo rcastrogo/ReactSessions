@@ -6,7 +6,7 @@
   <script type="text/javascript">
     setTimeout(function () {
       const fullPath = window.location.pathname + window.location.search + window.location.hash;
-      localStorage.setItem('react-sessions.redirect', fullPath);
+      localStorage.setItem('react-sessions.redirect', JSON.stringify(fullPath));
       window.location.replace("/ReactSessions/");
     }, 1000);
   </script>
