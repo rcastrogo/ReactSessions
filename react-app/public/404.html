@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Redireccionando...</title>
+  <script type="text/javascript">
+    setTimeout(function () {
+      const fullPath = window.location.pathname + window.location.search + window.location.hash;
+      localStorage.setItem('react-sessions.redirect', JSON.stringify({ value: fullPath }));
+      window.location.replace("/ReactSessions/");
+    }, 1000);
+  </script>
+</head>
+<body>
+  <p>Redireccionando...</p>
+</body>
+</html>
